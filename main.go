@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -64,17 +65,11 @@ func newFileEnvironment(filePath string) (string, error) {
 	return fmt.Sprintf("%s=%s", variable, version), nil
 }
 
-func environmentFromYaml(filePath string) ([]string, error) {
+func environmentFromYaml(yamlFile []byte) ([]string, error) {
 	var environment []string
-
 	var cfg composeInfo
 
-	yamlFile, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		return environment, err
-	}
-
-	err = yaml.Unmarshal(yamlFile, &cfg)
+	err := yaml.Unmarshal(yamlFile, &cfg)
 	if err != nil {
 		return environment, err
 	}
@@ -122,7 +117,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	env, err := environmentFromYaml(*compose)
+	var yamlFile []byte
+
+	if *compose == "-" {
+		yamlFile, err = ioutil.ReadAll(os.Stdin)
+	} else {
+		yamlFile, err = ioutil.ReadFile(*compose)
+	}
+
+	env, err := environmentFromYaml(yamlFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -162,7 +165,12 @@ func main() {
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
+
+	if *compose == "-" {
+		cmd.Stdin = bytes.NewReader(yamlFile)
+	} else {
+		cmd.Stdin = os.Stdin
+	}
 
 	err = cmd.Run()
 	if err != nil {
