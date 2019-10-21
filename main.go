@@ -101,10 +101,41 @@ func environmentFromYaml(yamlFile []byte) ([]string, error) {
 	return environment, nil
 }
 
+func loadEnvFromConfigFiles(filenames []string, stdin io.Reader) ([]string, error) {
+	var envs []string
+
+	for _, filename := range filenames {
+		env, err := loadEnvFromConfigFile(filename, stdin)
+		if err != nil {
+			return envs, err
+		}
+		envs = append(envs, env...)
+	}
+
+	return envs, nil
+}
+
+func loadEnvFromConfigFile(filename string, stdin io.Reader) ([]string, error) {
+	var yamlFile []byte
+	var err error
+
+	if filename == "-" {
+		yamlFile, err = ioutil.ReadAll(stdin)
+	} else {
+		yamlFile, err = ioutil.ReadFile(filename)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return environmentFromYaml(yamlFile)
+}
+
 var auth = flag.BoolP("with-registry-auth", "a", false, "Send registry authentication details to Swarm agents")
 var prune = flag.BoolP("prune", "p", false, "Prune services that are no longer referenced")
 var host = flag.StringP("host", "H", "", "Daemon socket(s) to connect to")
-var compose = flag.StringP("compose-file", "c", "docker-compose.yml", "Path to a Compose file, or '-' to read from stdin")
+var composeFiles = flag.StringSliceP("compose-file", "c", []string{"docker-compose.yml"}, "Path to a Compose file, or '-' to read from stdin")
 
 func main() {
 	flag.CommandLine.Init(os.Args[0], flag.ContinueOnError)
@@ -117,20 +148,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var yamlFile []byte
-
-	if *compose == "-" {
-		yamlFile, err = ioutil.ReadAll(os.Stdin)
-	} else {
-		yamlFile, err = ioutil.ReadFile(*compose)
-	}
-
-	env, err := environmentFromYaml(yamlFile)
+	var buf bytes.Buffer
+	tee := io.TeeReader(os.Stdin, &buf)
+	env, err := loadEnvFromConfigFiles(*composeFiles, tee)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	args := []string{"stack", "deploy", "--compose-file", *compose}
+	args := []string{"stack", "deploy"}
+	for _, composeFile := range *composeFiles {
+		args = append(args, "--compose-file", composeFile)
+	}
 
 	if *host != "" {
 		args = append([]string{"--host", *host}, args...)
@@ -166,8 +194,8 @@ func main() {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	if *compose == "-" {
-		cmd.Stdin = bytes.NewReader(yamlFile)
+	if buf.Len() > 0 {
+		cmd.Stdin = &buf
 	} else {
 		cmd.Stdin = os.Stdin
 	}
