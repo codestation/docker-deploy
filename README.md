@@ -28,3 +28,13 @@ The stack name can be ommited, in that case the current directory name will be u
 * `--with-registry-auth, -a` Send registry authentication details to Swarm agents.
 * `--prune, -p` Prune services that are no longer referenced.
 * `--host, -H` Daemon socket(s) to connect to.
+
+## Config file
+
+A file named `.docker-deploy.yml` can be placed in the current directory or any of the parent directories.
+Currently, only the Docker host can be specified.
+
+Example:
+```yaml
+host: ssh://user@example.org:port
+```

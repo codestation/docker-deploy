@@ -19,6 +19,10 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type appConfig struct {
+	Host string `yaml:"host"`
+}
+
 type configSettings struct {
 	Name string `yaml:"name"`
 	File string `yaml:"file"`
@@ -132,6 +136,41 @@ func loadEnvFromConfigFile(filename string, stdin io.Reader) ([]string, error) {
 	return environmentFromYaml(yamlFile)
 }
 
+func loadAppConfig(filename string) (*appConfig, error) {
+	cfg := &appConfig{}
+	targetPath, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+
+	rootDir := filepath.Join(filepath.VolumeName(targetPath), "/")
+
+	for {
+		configPath := filepath.Join(targetPath, filename)
+		data, err := ioutil.ReadFile(configPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				if targetPath == rootDir {
+					return cfg, nil
+				}
+				targetPath = filepath.Dir(targetPath)
+				continue
+			}
+			break
+		}
+
+		log.Printf("Reading config file: %s", configPath)
+		err = yaml.Unmarshal(data, cfg)
+		if err != nil {
+			break
+		}
+
+		return cfg, nil
+	}
+
+	return nil, err
+}
+
 var auth = flag.BoolP("with-registry-auth", "a", false, "Send registry authentication details to Swarm agents")
 var prune = flag.BoolP("prune", "p", false, "Prune services that are no longer referenced")
 var host = flag.StringP("host", "H", "", "Daemon socket(s) to connect to")
@@ -145,6 +184,11 @@ func main() {
 	if err == flag.ErrHelp {
 		os.Exit(0)
 	} else if err != nil {
+		log.Fatal(err)
+	}
+
+	cfg, err := loadAppConfig(".docker-deploy.yml")
+	if err != nil {
 		log.Fatal(err)
 	}
 
@@ -162,6 +206,8 @@ func main() {
 
 	if *host != "" {
 		args = append([]string{"--host", *host}, args...)
+	} else if cfg.Host != "" {
+		args = append([]string{"--host", cfg.Host}, args...)
 	}
 
 	if *auth {
