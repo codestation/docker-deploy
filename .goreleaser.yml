@@ -1,0 +1,43 @@
+---
+project_name: docker-deploy
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - 386
+      - amd64
+      - arm64
+      - arm
+    flags:
+      - -trimpath
+    ldflags: -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}}
+
+archives:
+  - format: tar.gz
+    wrap_in_directory: true
+    format_overrides:
+      - goos: windows
+        format: zip
+    name_template: '{{ .ProjectName }}-{{ .Version }}-{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: '{{ .ProjectName }}-{{ .Version }}-checksums.txt'
+
+snapshot:
+  name_template: SNAPSHOT-{{ .Commit }}
+
+changelog:
+  skip: true
+
+release:
+  github:
+    owner: codestation
+    name: docker-deploy
