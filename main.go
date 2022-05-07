@@ -13,10 +13,23 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime/debug"
 	"strings"
+	"time"
 
 	flag "github.com/spf13/pflag"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
+)
+
+var (
+	// Tag indicates the commit tag
+	Tag = "none"
+	// Revision indicates the git commit of the build
+	Revision = "unknown"
+	// LastCommit indicates the date of the commit
+	LastCommit time.Time
+	// Modified indicates if the binary was built from a unmodified source code
+	Modified = true
 )
 
 type appConfig struct {
@@ -171,10 +184,27 @@ func loadAppConfig(filename string) (*appConfig, error) {
 	return nil, err
 }
 
+func loadVersionInfo() {
+	info, ok := debug.ReadBuildInfo()
+	if ok {
+		for _, setting := range info.Settings {
+			switch setting.Key {
+			case "vcs.revision":
+				Revision = setting.Value
+			case "vcs.time":
+				LastCommit, _ = time.Parse(time.RFC3339, setting.Value)
+			case "vcs.modified":
+				Modified = setting.Value == "true"
+			}
+		}
+	}
+}
+
 var auth = flag.BoolP("with-registry-auth", "a", false, "Send registry authentication details to Swarm agents")
 var prune = flag.BoolP("prune", "p", false, "Prune services that are no longer referenced")
 var host = flag.StringP("host", "H", "", "Daemon socket(s) to connect to")
 var composeFiles = flag.StringSliceP("compose-file", "c", []string{"docker-compose.yml"}, "Path to a Compose file, or '-' to read from stdin")
+var version = flag.BoolP("version", "v", false, "Show version")
 
 func main() {
 	flag.CommandLine.Init(os.Args[0], flag.ContinueOnError)
@@ -185,6 +215,12 @@ func main() {
 		os.Exit(0)
 	} else if err != nil {
 		log.Fatal(err)
+	}
+
+	if *version {
+		loadVersionInfo()
+		fmt.Printf("docker-deploy version: %s, commit: %s, date: %s, clean build: %t\n", Tag, Revision, LastCommit, Modified)
+		return
 	}
 
 	cfg, err := loadAppConfig(".docker-deploy.yml")

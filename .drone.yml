@@ -5,7 +5,7 @@ type: docker
 
 platform:
   os: linux
-  arch: amd64
+  arch: arm64
 
 steps:
   - name: fetch
@@ -14,7 +14,7 @@ steps:
       - git fetch --tags
 
   - name: lint
-    image: golangci/golangci-lint:v1.42.1
+    image: golangci/golangci-lint:v1.45.2
     commands:
       - golangci-lint run --no-config -v --timeout 10m ./...
     when:
@@ -23,7 +23,7 @@ steps:
           - tag
 
   - name: release
-    image: ghcr.io/goreleaser/goreleaser:v0.180.3
+    image: ghcr.io/goreleaser/goreleaser:v1.8.3
     commands:
       - goreleaser release --skip-announce
     environment:
