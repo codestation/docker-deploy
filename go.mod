@@ -1,4 +1,4 @@
-module megpoid.xyz/go/docker-deploy
+module megpoid.dev/go/docker-deploy
 
 go 1.18
 
