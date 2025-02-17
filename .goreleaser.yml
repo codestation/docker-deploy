@@ -1,5 +1,6 @@
 ---
 project_name: docker-deploy
+version: 2
 
 builds:
   - env:
@@ -35,7 +36,7 @@ snapshot:
   name_template: SNAPSHOT-{{ .Commit }}
 
 changelog:
-  skip: true
+  disable: true
 
 release:
   github:
