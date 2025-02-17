@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -137,9 +136,9 @@ func loadEnvFromConfigFile(filename string, stdin io.Reader) ([]string, error) {
 	var err error
 
 	if filename == "-" {
-		yamlFile, err = ioutil.ReadAll(stdin)
+		yamlFile, err = io.ReadAll(stdin)
 	} else {
-		yamlFile, err = ioutil.ReadFile(filename)
+		yamlFile, err = os.ReadFile(filename)
 	}
 
 	if err != nil {
@@ -160,7 +159,7 @@ func loadAppConfig(filename string) (*appConfig, error) {
 
 	for {
 		configPath := filepath.Join(targetPath, filename)
-		data, err := ioutil.ReadFile(configPath)
+		data, err := os.ReadFile(configPath)
 		if err != nil {
 			if os.IsNotExist(err) {
 				if targetPath == rootDir {
